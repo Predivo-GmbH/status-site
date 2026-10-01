@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <!--
   Predivo status page. Layout modelled on status.claude.com (Roger's reference, 2026-10-01).
   Hosted on GitHub Pages (repo Predivo-GmbH/status-site), NOT on our own web host, so it stays up when
@@ -60,6 +61,18 @@
   .sub-menu a { display: block; padding: 8px 10px; border-radius: 4px; color: var(--ink); text-decoration: none; font-weight: 500; }
   .sub-menu a:hover, .sub-menu a:focus-visible { background: #f3f4f6; outline: none; }
   .sub-menu p { margin: 6px 10px 4px; font-size: 12px; color: var(--muted); }
+  .sub-menu { width: 300px; }
+  #sub-form { padding: 8px 10px 4px; display: grid; gap: 8px; }
+  #sub-form label { font-weight: 600; color: var(--ink); font-size: 13px; }
+  #sub-form input { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: #fff; }
+  #sub-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  #sub-form button { font: inherit; font-weight: 600; font-size: 13px; padding: 8px 10px; border: 0; border-radius: 4px; background: var(--ink); color: #fff; cursor: pointer; }
+  #sub-form button[disabled] { opacity: .6; cursor: wait; }
+  #sub-form p { margin: 0; }
+  #sub-msg:empty { display: none; }
+  #sub-msg { font-size: 13px; color: var(--ink); }
+  #sub-msg.ok { color: var(--ok-text); } #sub-msg.err { color: var(--critical-text); }
+  .sub-sep { height: 1px; background: var(--line); margin: 6px 4px; }
   .banner { border-radius: 4px; padding: 16px 20px; color: #fff; font-size: 17px; font-weight: 500; background: var(--ok-banner); margin-bottom: 16px; }
   .banner.minor { background: var(--minor-text); } .banner.major { background: var(--major-text); }
   .banner.critical { background: var(--critical-text); } .banner.maintenance { background: var(--maint-text); }
@@ -131,11 +144,18 @@
       <div class="sub-wrap">
         <button type="button" class="subscribe" id="subscribe" aria-haspopup="true" aria-expanded="false" aria-controls="sub-menu">Updates abonnieren</button>
         <div class="sub-menu" id="sub-menu" hidden>
-          <a id="sub-email" href="https://predivo.statuspage.io/" target="_blank" rel="noopener">E-Mail</a>
+          <form id="sub-form" novalidate>
+            <label id="sub-email-label" for="sub-email-input">E-Mail-Benachrichtigungen</label>
+            <input type="email" id="sub-email-input" name="email" autocomplete="email" required placeholder="name@firma.ch">
+            <div id="sub-turnstile"></div>
+            <button type="submit" id="sub-submit">Abonnieren</button>
+            <p id="sub-msg" role="status" aria-live="polite"></p>
+            <p id="sub-hint">Sie erhalten eine E-Mail zur Bestätigung. Abmelden geht jederzeit über den Link in jeder Nachricht. Die Adresse wird bei Atlassian Statuspage gespeichert.</p>
+          </form>
+          <div class="sub-sep"></div>
           <a href="https://subscriptions.statuspage.io/slack_authentication/kickoff?page_code=9th11ttn03gg" target="_blank" rel="noopener">Slack</a>
           <a id="sub-atom" href="https://predivo.statuspage.io/history.atom">Atom-Feed</a>
           <a id="sub-rss" href="https://predivo.statuspage.io/history.rss">RSS-Feed</a>
-          <p id="sub-hint">E-Mail-Abos laufen über Atlassian Statuspage: dort auf «Subscribe to updates» klicken.</p>
         </div>
       </div>
     </div>
@@ -179,7 +199,7 @@
       daysAgo: 'vor 90 Tagen', today: 'Heute', uptime: '% Verfügbarkeit', noData: 'Keine Daten',
       noIncToday: 'Heute keine Vorfälle gemeldet.', noInc: 'Keine Vorfälle gemeldet.',
       dayOk: 'Kein Ausfall erfasst', dayDown: m => `${m} Min. Ausfall`, dayNoData: 'Noch nicht überwacht',
-      subscribe: 'Updates abonnieren', email: 'E-Mail', atom: 'Atom-Feed', rss: 'RSS-Feed', subHint: 'E-Mail-Abos laufen über Atlassian Statuspage: dort auf «Subscribe to updates» klicken.', historyAll: '← Vorfallsverlauf', powered: 'Daten: Atlassian Statuspage',
+      subscribe: 'Updates abonnieren', emailLabel: 'E-Mail-Benachrichtigungen', subscribeBtn: 'Abonnieren', sending: 'Wird gesendet …', atom: 'Atom-Feed', rss: 'RSS-Feed', subHint: 'Sie erhalten eine E-Mail zur Bestätigung. Abmelden geht jederzeit über den Link in jeder Nachricht. Die Adresse wird bei Atlassian Statuspage gespeichert.', subOk: e => `Fast geschafft: Bitte bestätigen Sie den Link in der E-Mail an ${e}.`, subAlready: 'Diese Adresse ist bereits angemeldet.', subInvalid: 'Bitte eine gültige E-Mail-Adresse eingeben.', subWait: 'Einen Moment, die Sicherheitsprüfung läuft noch.', subCaptcha: 'Die Sicherheitsprüfung ist abgelaufen. Bitte nochmals versuchen.', subFail: 'Das hat nicht geklappt. Bitte später nochmals versuchen.', historyAll: '← Vorfallsverlauf', powered: 'Daten: Atlassian Statuspage',
       updated: t => `Aktualisiert ${t}`, maint: 'Geplante Wartung', active: 'Aktuelle Störung',
       fallback: 'Statuspage ist gerade nicht erreichbar. Die Anzeige kommt direkt aus unserer eigenen Prüfung.',
       failed: 'Status konnte nicht geladen werden', locale: 'de-CH',
@@ -194,7 +214,7 @@
       daysAgo: '90 days ago', today: 'Today', uptime: '% uptime', noData: 'No data',
       noIncToday: 'No incidents reported today.', noInc: 'No incidents reported.',
       dayOk: 'No downtime recorded', dayDown: m => `${m} min of downtime`, dayNoData: 'Not monitored yet',
-      subscribe: 'Subscribe to updates', email: 'Email', atom: 'Atom feed', rss: 'RSS feed', subHint: 'Email subscriptions run on Atlassian Statuspage: click «Subscribe to updates» there.', historyAll: '← Incident History', powered: 'Data: Atlassian Statuspage',
+      subscribe: 'Subscribe to updates', emailLabel: 'Email notifications', subscribeBtn: 'Subscribe', sending: 'Sending …', atom: 'Atom feed', rss: 'RSS feed', subHint: 'You will get an email to confirm. Unsubscribe any time with the link in every message. The address is stored by Atlassian Statuspage.', subOk: e => `Almost done: please confirm the link in the email sent to ${e}.`, subAlready: 'This address is already subscribed.', subInvalid: 'Please enter a valid email address.', subWait: 'One moment, the security check is still running.', subCaptcha: 'The security check expired. Please try again.', subFail: 'That did not work. Please try again later.', historyAll: '← Incident History', powered: 'Data: Atlassian Statuspage',
       updated: t => `Updated ${t}`, maint: 'Scheduled maintenance', active: 'Active incident',
       fallback: 'Statuspage is unreachable right now. This view comes straight from our own checks.',
       failed: 'Status could not be loaded', locale: 'en-GB',
@@ -274,7 +294,7 @@
     const d = last, l = lang;
     document.documentElement.lang = l;
     document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
-    $('subscribe').textContent = T[l].subscribe; $('sub-hint').textContent = T[l].subHint; $('sub-email').textContent = T[l].email; $('sub-atom').textContent = T[l].atom; $('sub-rss').textContent = T[l].rss; $('uptime-label').textContent = T[l].uptimeLabel;
+    $('subscribe').textContent = T[l].subscribe; $('sub-hint').textContent = T[l].subHint; $('sub-email-label').textContent = T[l].emailLabel; $('sub-submit').textContent = T[l].subscribeBtn; $('sub-atom').textContent = T[l].atom; $('sub-rss').textContent = T[l].rss; $('uptime-label').textContent = T[l].uptimeLabel;
     $('history-link').textContent = T[l].history; $('past-title').textContent = T[l].past;
     $('history-all').textContent = T[l].historyAll; $('powered').textContent = T[l].powered;
     if (!d) { $('banner').textContent = T[l].loading; return; }
@@ -350,6 +370,46 @@
   subBtn.addEventListener('click', e => { e.stopPropagation(); setMenu(subMenu.hidden); });
   document.addEventListener('click', e => { if (!subMenu.hidden && !subMenu.contains(e.target)) setMenu(false); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+
+  // Email subscribe: posted to our Cloudflare Worker (repo worker/subscribe.js), which checks Turnstile
+  // and creates the subscriber through the Statuspage API; Statuspage then mails the confirmation link.
+  const SUBSCRIBE_URL = 'https://predivo-status-subscribe.restless-silence-9277.workers.dev';
+  const TURNSTILE_SITEKEY = '0x4AAAAAAFK_j6H2BTmJmifo';
+  let tsWidget = null, tsToken = '';
+  function renderTurnstile() {
+    if (tsWidget !== null || !window.turnstile) return;
+    tsWidget = window.turnstile.render('#sub-turnstile', {
+      sitekey: TURNSTILE_SITEKEY, size: 'flexible', language: lang, appearance: 'interaction-only',
+      callback: t => { tsToken = t; }, 'expired-callback': () => { tsToken = ''; }, 'error-callback': () => { tsToken = ''; },
+    });
+  }
+  subBtn.addEventListener('click', () => { renderTurnstile(); setTimeout(() => $('sub-email-input').focus(), 50); });
+  const subMsg = (text, cls) => { const m = $('sub-msg'); m.textContent = text; m.className = cls || ''; };
+  $('sub-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = $('sub-email-input').value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { subMsg(T[lang].subInvalid, 'err'); return; }
+    renderTurnstile();
+    for (let i = 0; i < 16 && !tsToken; i++) { if (i === 1) subMsg(T[lang].subWait, ''); await new Promise(r => setTimeout(r, 500)); }
+    if (!tsToken) { subMsg(T[lang].subCaptcha, 'err'); return; }
+    subMsg('', '');
+    const btn = $('sub-submit'); btn.disabled = true; btn.textContent = T[lang].sending;
+    try {
+      const r = await fetch(SUBSCRIBE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, token: tsToken }) });
+      const j = await r.json().catch(() => ({}));
+      if (j.ok && j.already) subMsg(T[lang].subAlready, 'ok');
+      else if (j.ok) { subMsg(T[lang].subOk(email), 'ok'); $('sub-email-input').value = ''; }
+      else if (j.error === 'invalid_email') subMsg(T[lang].subInvalid, 'err');
+      else if (j.error === 'captcha') subMsg(T[lang].subCaptcha, 'err');
+      else subMsg(T[lang].subFail, 'err');
+    } catch { subMsg(T[lang].subFail, 'err'); }
+    finally {
+      btn.disabled = false; btn.textContent = T[lang].subscribeBtn;
+      tsToken = ''; if (window.turnstile && tsWidget !== null) window.turnstile.reset(tsWidget);
+    }
+  });
+  // keep the menu open while someone types in it
+  subMenu.addEventListener('click', e => e.stopPropagation());
 
   document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
     lang = b.dataset.lang; try { localStorage.setItem('predivo-status-lang', lang) } catch {}
