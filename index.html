@@ -17,7 +17,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script>window.predivoTsQueue = [];window.predivoTsReady = () => window.predivoTsQueue.forEach(f => f());</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=predivoTsReady" async defer></script>
 <!--
   Predivo status page. Layout modelled on status.claude.com (Roger's reference, 2026-10-01).
   Hosted on GitHub Pages (repo Predivo-GmbH/status-site), NOT on our own web host, so it stays up when
@@ -383,6 +384,7 @@
       callback: t => { tsToken = t; }, 'expired-callback': () => { tsToken = ''; }, 'error-callback': () => { tsToken = ''; },
     });
   }
+  if (window.turnstile) renderTurnstile(); else window.predivoTsQueue.push(renderTurnstile);
   subBtn.addEventListener('click', () => { renderTurnstile(); setTimeout(() => $('sub-email-input').focus(), 50); });
   const subMsg = (text, cls) => { const m = $('sub-msg'); m.textContent = text; m.className = cls || ''; };
   $('sub-form').addEventListener('submit', async e => {
@@ -390,7 +392,7 @@
     const email = $('sub-email-input').value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { subMsg(T[lang].subInvalid, 'err'); return; }
     renderTurnstile();
-    for (let i = 0; i < 16 && !tsToken; i++) { if (i === 1) subMsg(T[lang].subWait, ''); await new Promise(r => setTimeout(r, 500)); }
+    for (let i = 0; i < 40 && !tsToken; i++) { if (i === 1) subMsg(T[lang].subWait, ''); await new Promise(r => setTimeout(r, 500)); }
     if (!tsToken) { subMsg(T[lang].subCaptcha, 'err'); return; }
     subMsg('', '');
     const btn = $('sub-submit'); btn.disabled = true; btn.textContent = T[lang].sending;
