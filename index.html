@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Predivo Status</title>
+<meta name="description" content="Live-Status der Dienste von Predivo GmbH: Verfügbarkeit, Störungen und geplante Wartungen.">
+<meta name="theme-color" content="#111827">
+<link rel="icon" type="image/svg+xml" href="assets/predivo-mark.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="alternate" type="application/atom+xml" title="Predivo Status (Atom)" href="https://predivo.statuspage.io/history.atom">
+<link rel="alternate" type="application/rss+xml" title="Predivo Status (RSS)" href="https://predivo.statuspage.io/history.rss">
+<meta property="og:title" content="Predivo Status">
+<meta property="og:description" content="Live-Status der Dienste von Predivo GmbH.">
+<meta property="og:url" content="https://status.predivo.ch/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Predivo status page. Layout modelled on status.claude.com (Roger's reference, 2026-10-01).
+  Hosted on GitHub Pages (repo Predivo-GmbH/status-site), NOT on our own web host, so it stays up when
+  predivo.ch is down. Everything it shows is read live in the visitor's browser from two public sources:
+    - Atlassian Statuspage public API (predivo.statuspage.io/api/v2): current status, components, incidents,
+      maintenance. Statuspage is where incidents are written and where people subscribe.
+    - Upptime check history (raw.githubusercontent.com, repo Predivo-GmbH/status-predivo): the 90-day bars.
+  Brand tokens are taken from predivo.ch's own stylesheet (Inter, #111827 ink, #2A9D8F accent).
+-->
+<style>
+  :root {
+    --bg: #f9fafb; --card: #ffffff; --ink: #111827; --body: #374151; --muted: #6b7280; --faint: #9ca3af;
+    --line: #e5e7eb; --accent: #2A9D8F;
+    --ok: #22c55e; --ok-text: #15803d; --ok-banner: #15803d;
+    --minor: #f59e0b; --minor-text: #b45309;
+    --major: #f97316; --major-text: #c2410c;
+    --critical: #ef4444; --critical-text: #b91c1c;
+    --maint: #3b82f6; --maint-text: #1d4ed8;
+    --nodata: #d1d5db;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--body); font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--ink); }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 40px; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+  .brand img { width: 30px; height: 30px; }
+  .brand .word { font-weight: 700; font-size: 22px; letter-spacing: -0.02em; }
+  .brand .sub { font-weight: 400; font-size: 22px; letter-spacing: -0.01em; }
+  .actions { display: flex; align-items: center; gap: 12px; }
+  .lang { display: flex; gap: 2px; font-size: 12px; }
+  .lang button { border: 0; background: none; padding: 4px 6px; cursor: pointer; color: var(--faint); font: inherit; border-radius: 4px; }
+  .lang button[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+  .lang button:focus-visible, .subscribe:focus-visible, .bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .subscribe { display: inline-block; background: var(--ink); color: #fff; text-decoration: none; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; font-weight: 600; padding: 9px 14px; border-radius: 4px; }
+  .subscribe:hover { background: #1f2937; }
+  button.subscribe { border: 0; cursor: pointer; font-family: inherit; }
+  .sub-wrap { position: relative; }
+  .sub-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 260px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 24px rgba(17,24,39,.12); padding: 6px; }
+  .sub-menu a { display: block; padding: 8px 10px; border-radius: 4px; color: var(--ink); text-decoration: none; font-weight: 500; }
+  .sub-menu a:hover, .sub-menu a:focus-visible { background: #f3f4f6; outline: none; }
+  .sub-menu p { margin: 6px 10px 4px; font-size: 12px; color: var(--muted); }
+  .banner { border-radius: 4px; padding: 16px 20px; color: #fff; font-size: 17px; font-weight: 500; background: var(--ok-banner); margin-bottom: 16px; }
+  .banner.minor { background: var(--minor-text); } .banner.major { background: var(--major-text); }
+  .banner.critical { background: var(--critical-text); } .banner.maintenance { background: var(--maint-text); }
+  .banner.unknown { background: #4b5563; }
+  .notice { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--minor); border-radius: 4px; padding: 14px 18px; margin-bottom: 16px; }
+  .notice.maint { border-left-color: var(--maint); } .notice.major { border-left-color: var(--major); } .notice.critical { border-left-color: var(--critical); }
+  .notice h3 { margin: 0 0 6px; font-size: 15px; color: var(--ink); }
+  .notice p { margin: 0 0 4px; }
+  .uptime-head { display: flex; justify-content: flex-end; font-size: 12px; color: var(--muted); margin: 40px 0 8px; gap: 4px; flex-wrap: wrap; }
+  .uptime-head a { color: var(--ink); text-decoration: none; } .uptime-head a:hover { text-decoration: underline; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 4px; }
+  .comp { padding: 16px 18px 12px; border-top: 1px solid var(--line); }
+  .comp:first-child { border-top: 0; }
+  .comp.child { padding-left: 34px; }
+  .group-title { padding: 14px 18px; font-weight: 600; color: var(--ink); border-top: 1px solid var(--line); display: flex; justify-content: space-between; }
+  .group-title:first-child { border-top: 0; }
+  .comp-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .comp-name { color: var(--ink); font-size: 14px; font-weight: 500; }
+  .comp-name .desc { display: inline-block; margin-left: 6px; width: 15px; height: 15px; line-height: 13px; text-align: center; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; color: var(--muted); cursor: help; }
+  .st { font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .st.operational { color: var(--ok-text); } .st.degraded_performance { color: var(--minor-text); }
+  .st.partial_outage { color: var(--major-text); } .st.major_outage { color: var(--critical-text); }
+  .st.under_maintenance { color: var(--maint-text); }
+  .bars { display: flex; gap: 2px; height: 34px; position: relative; }
+  .bar { flex: 1 1 0; min-width: 0; border-radius: 1px; background: var(--ok); border: 0; padding: 0; cursor: default; }
+  .bar.minor { background: var(--minor); } .bar.major { background: var(--major); } .bar.critical { background: var(--critical); }
+  .bar.nodata { background: var(--nodata); }
+  .bar:hover { opacity: .7; }
+  .legend { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--faint); margin-top: 6px; }
+  .legend .rule { flex: 1; height: 1px; background: var(--line); }
+  .tip { position: fixed; z-index: 10; pointer-events: none; background: var(--card); border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(17,24,39,.12); border-radius: 6px; padding: 10px 12px; font-size: 12px; max-width: 260px; display: none; }
+  .tip b { display: block; color: var(--ink); margin-bottom: 2px; }
+  h2 { font-size: 22px; font-weight: 500; color: var(--ink); margin: 56px 0 8px; letter-spacing: -0.01em; }
+  .day { margin-top: 22px; }
+  .day h4 { font-size: 15px; font-weight: 500; color: var(--ink); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .none { color: var(--faint); font-size: 13px; }
+  .inc { margin: 0 0 18px; }
+  .inc-title { font-size: 16px; font-weight: 500; margin: 0 0 8px; color: var(--ink); text-decoration: none; display: inline-block; }
+  .inc-title.minor { color: var(--minor-text); } .inc-title.major { color: var(--major-text); } .inc-title.critical { color: var(--critical-text); } .inc-title.maintenance { color: var(--maint-text); }
+  .upd { margin: 0 0 10px; }
+  .upd p { margin: 0; color: var(--body); }
+  .upd p b { color: var(--ink); }
+  .upd small { color: var(--faint); font-size: 11px; }
+  footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+  footer a { color: var(--ink); text-decoration: none; } footer a:hover { text-decoration: underline; }
+  footer .right a { color: var(--faint); }
+  .fallback-note { font-size: 12px; color: var(--muted); margin: -8px 0 16px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 560px) {
+    .wrap { padding-top: 24px; } header { margin-bottom: 24px; }
+    .brand .word, .brand .sub { font-size: 19px; }
+    .bars { height: 28px; gap: 1px; }
+    .bars .bar:nth-child(-n+30) { display: none; } /* phones show the last 60 days, like Statuspage */
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="https://predivo.ch" aria-label="Predivo">
+      <img src="assets/predivo-mark.svg" alt="" width="30" height="30">
+      <span class="word">predivo</span><span class="sub">Status</span>
+    </a>
+    <div class="actions">
+      <div class="lang" role="group" aria-label="Sprache / Language">
+        <button type="button" data-lang="de" aria-pressed="true">DE</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <div class="sub-wrap">
+        <button type="button" class="subscribe" id="subscribe" aria-haspopup="true" aria-expanded="false" aria-controls="sub-menu">Updates abonnieren</button>
+        <div class="sub-menu" id="sub-menu" hidden>
+          <a id="sub-email" href="https://predivo.statuspage.io/" target="_blank" rel="noopener">E-Mail</a>
+          <a href="https://subscriptions.statuspage.io/slack_authentication/kickoff?page_code=9th11ttn03gg" target="_blank" rel="noopener">Slack</a>
+          <a id="sub-atom" href="https://predivo.statuspage.io/history.atom">Atom-Feed</a>
+          <a id="sub-rss" href="https://predivo.statuspage.io/history.rss">RSS-Feed</a>
+          <p id="sub-hint">E-Mail-Abos laufen über Atlassian Statuspage: dort auf «Subscribe to updates» klicken.</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="banner" class="banner unknown" role="status" aria-live="polite">Status wird geladen …</div>
+    <p id="fallback" class="fallback-note" hidden></p>
+    <div id="notices"></div>
+
+    <div class="uptime-head"><span id="uptime-label">Verfügbarkeit der letzten 90 Tage.</span> <a id="history-link" href="https://predivo.statuspage.io/uptime" target="_blank" rel="noopener">Verlauf ansehen.</a></div>
+    <div id="components" class="card" aria-live="polite"></div>
+
+    <h2 id="past-title">Frühere Vorfälle</h2>
+    <div id="past"></div>
+  </main>
+
+  <footer>
+    <a id="history-all" href="https://predivo.statuspage.io/history" target="_blank" rel="noopener">← Vorfallsverlauf</a>
+    <span class="right"><span id="updated"></span> · <a href="https://predivo.statuspage.io/history.atom">Atom</a> · <a href="https://predivo.statuspage.io/history.rss">RSS</a> · <a id="powered" href="https://www.atlassian.com/software/statuspage" target="_blank" rel="noopener">Daten: Atlassian Statuspage</a></span>
+  </footer>
+  <noscript><p>Diese Seite braucht JavaScript. Den Status gibt es auch direkt unter <a href="https://predivo.statuspage.io">predivo.statuspage.io</a>.</p></noscript>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(() => {
+  const SP = 'https://predivo.statuspage.io/api/v2';
+  const RAW = 'https://raw.githubusercontent.com/Predivo-GmbH/status-predivo/master';
+  const TZ = 'Europe/Zurich';
+  const DAYS = 90, PAST_DAYS = 15;
+
+  const T = {
+    de: {
+      loading: 'Status wird geladen …',
+      allOk: 'Alle Systeme laufen normal',
+      indicator: { none: 'Alle Systeme laufen normal', minor: 'Teilweise eingeschränkt', major: 'Teilweiser Ausfall', critical: 'Grösserer Ausfall', maintenance: 'Wartung läuft' },
+      comp: { operational: 'In Betrieb', degraded_performance: 'Eingeschränkte Leistung', partial_outage: 'Teilweiser Ausfall', major_outage: 'Grösserer Ausfall', under_maintenance: 'Wartung' },
+      upd: { investigating: 'Untersuchung', identified: 'Ursache gefunden', monitoring: 'Beobachtung', resolved: 'Behoben', update: 'Update', postmortem: 'Nachbetrachtung', scheduled: 'Geplant', in_progress: 'Läuft', verifying: 'Wird geprüft', completed: 'Abgeschlossen' },
+      uptimeLabel: 'Verfügbarkeit der letzten 90 Tage.', history: 'Verlauf ansehen.', past: 'Frühere Vorfälle',
+      daysAgo: 'vor 90 Tagen', today: 'Heute', uptime: '% Verfügbarkeit', noData: 'Keine Daten',
+      noIncToday: 'Heute keine Vorfälle gemeldet.', noInc: 'Keine Vorfälle gemeldet.',
+      dayOk: 'Kein Ausfall erfasst', dayDown: m => `${m} Min. Ausfall`, dayNoData: 'Noch nicht überwacht',
+      subscribe: 'Updates abonnieren', email: 'E-Mail', atom: 'Atom-Feed', rss: 'RSS-Feed', subHint: 'E-Mail-Abos laufen über Atlassian Statuspage: dort auf «Subscribe to updates» klicken.', historyAll: '← Vorfallsverlauf', powered: 'Daten: Atlassian Statuspage',
+      updated: t => `Aktualisiert ${t}`, maint: 'Geplante Wartung', active: 'Aktuelle Störung',
+      fallback: 'Statuspage ist gerade nicht erreichbar. Die Anzeige kommt direkt aus unserer eigenen Prüfung.',
+      failed: 'Status konnte nicht geladen werden', locale: 'de-CH',
+    },
+    en: {
+      loading: 'Loading status …',
+      allOk: 'All Systems Operational',
+      indicator: { none: 'All Systems Operational', minor: 'Minor Service Outage', major: 'Partial System Outage', critical: 'Major System Outage', maintenance: 'Service Under Maintenance' },
+      comp: { operational: 'Operational', degraded_performance: 'Degraded Performance', partial_outage: 'Partial Outage', major_outage: 'Major Outage', under_maintenance: 'Under Maintenance' },
+      upd: { investigating: 'Investigating', identified: 'Identified', monitoring: 'Monitoring', resolved: 'Resolved', update: 'Update', postmortem: 'Postmortem', scheduled: 'Scheduled', in_progress: 'In progress', verifying: 'Verifying', completed: 'Completed' },
+      uptimeLabel: 'Uptime over the past 90 days.', history: 'View historical uptime.', past: 'Past Incidents',
+      daysAgo: '90 days ago', today: 'Today', uptime: '% uptime', noData: 'No data',
+      noIncToday: 'No incidents reported today.', noInc: 'No incidents reported.',
+      dayOk: 'No downtime recorded', dayDown: m => `${m} min of downtime`, dayNoData: 'Not monitored yet',
+      subscribe: 'Subscribe to updates', email: 'Email', atom: 'Atom feed', rss: 'RSS feed', subHint: 'Email subscriptions run on Atlassian Statuspage: click «Subscribe to updates» there.', historyAll: '← Incident History', powered: 'Data: Atlassian Statuspage',
+      updated: t => `Updated ${t}`, maint: 'Scheduled maintenance', active: 'Active incident',
+      fallback: 'Statuspage is unreachable right now. This view comes straight from our own checks.',
+      failed: 'Status could not be loaded', locale: 'en-GB',
+    },
+  };
+  let lang = 'de';
+  try {
+    const saved = localStorage.getItem('predivo-status-lang');
+    if (saved && T[saved]) lang = saved;
+    else if ((navigator.language || '').toLowerCase().startsWith('en')) lang = 'en';
+  } catch { /* storage blocked: German default */ }
+  let last = null; // last fetched data, re-rendered on language switch
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const linkify = s => esc(s).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" rel="noopener" target="_blank">$1</a>').replace(/\n/g, '<br>');
+  const dayKey = d => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const fmtDay = (d, l) => new Intl.DateTimeFormat(T[l].locale, { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+  const fmtTime = (d, l) => new Intl.DateTimeFormat(T[l].locale, { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }).format(d);
+  const fmtNum = (n, l) => n.toLocaleString(T[l].locale, { maximumFractionDigits: 2, minimumFractionDigits: n === 100 ? 0 : 2 });
+
+  async function getJSON(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); }
+  async function getText(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(url + ' ' + r.status); return r.text(); }
+
+  async function load() {
+    const [summary, incidents, upptime, mapping] = await Promise.allSettled([
+      getJSON(`${SP}/summary.json`), getJSON(`${SP}/incidents.json`),
+      getJSON(`${RAW}/history/summary.json`), getJSON(`${RAW}/statuspage.json`),
+    ]);
+    const up = upptime.status === 'fulfilled' ? upptime.value : [];
+    const map = mapping.status === 'fulfilled' ? mapping.value.components || {} : {};
+    const slugById = Object.fromEntries(Object.entries(map).map(([slug, id]) => [id, slug]));
+    // first day each check ran, from the Upptime history file (days before it are "no data")
+    const starts = {};
+    await Promise.all(up.map(async s => {
+      try { const y = await getText(`${RAW}/history/${s.slug}.yml`); const m = y.match(/startTime:\s*([0-9T:.\-Z]+)/); if (m) starts[s.slug] = new Date(m[1]); } catch {}
+    }));
+    return {
+      sp: summary.status === 'fulfilled' ? summary.value : null,
+      incidents: incidents.status === 'fulfilled' ? incidents.value.incidents || [] : [],
+      up, slugById, starts, at: new Date(),
+    };
+  }
+
+  function barsFor(slug, d, l) {
+    const site = d.up.find(s => s.slug === slug);
+    const start = d.starts[slug];
+    const down = (site && site.dailyMinutesDown) || {};
+    const out = []; let monitored = 0, minutes = 0;
+    for (let i = DAYS - 1; i >= 0; i--) {
+      const day = new Date(d.at.getTime() - i * 86400000);
+      const key = dayKey(day);
+      const before = !site || (start && key < dayKey(start));
+      const m = before ? null : Math.round(down[key] || 0);
+      if (m !== null) { monitored++; minutes += m; }
+      const cls = m === null ? 'nodata' : m === 0 ? '' : m < 15 ? 'minor' : m < 60 ? 'major' : 'critical';
+      const text = m === null ? T[l].dayNoData : m === 0 ? T[l].dayOk : T[l].dayDown(m);
+      out.push(`<button type="button" class="bar ${cls}" data-day="${esc(fmtDay(day, l))}" data-text="${esc(text)}" aria-label="${esc(fmtDay(day, l))}: ${esc(text)}"></button>`);
+    }
+    const pct = monitored ? Math.max(0, 100 - (minutes / (monitored * 1440)) * 100) : null;
+    return { html: out.join(''), pct };
+  }
+
+  function compRow(c, d, l, child) {
+    const slug = d.slugById[c.id] || c.slug;
+    const b = barsFor(slug, d, l);
+    const desc = c.description ? `<span class="desc" title="${esc(c.description)}" aria-label="${esc(c.description)}">?</span>` : '';
+    const pct = b.pct === null ? T[l].noData : `${fmtNum(Math.round(b.pct * 100) / 100, l)} ${T[l].uptime}`;
+    return `<div class="comp${child ? ' child' : ''}">
+      <div class="comp-top"><span class="comp-name">${esc(c.name)}${desc}</span><span class="st ${esc(c.status)}">${esc(T[l].comp[c.status] || c.status)}</span></div>
+      <div class="bars">${b.html}</div>
+      <div class="legend"><span>${T[l].daysAgo}</span><span class="rule"></span><span>${pct}</span><span class="rule"></span><span>${T[l].today}</span></div>
+    </div>`;
+  }
+
+  function render() {
+    const d = last, l = lang;
+    document.documentElement.lang = l;
+    document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+    $('subscribe').textContent = T[l].subscribe; $('sub-hint').textContent = T[l].subHint; $('sub-email').textContent = T[l].email; $('sub-atom').textContent = T[l].atom; $('sub-rss').textContent = T[l].rss; $('uptime-label').textContent = T[l].uptimeLabel;
+    $('history-link').textContent = T[l].history; $('past-title').textContent = T[l].past;
+    $('history-all').textContent = T[l].historyAll; $('powered').textContent = T[l].powered;
+    if (!d) { $('banner').textContent = T[l].loading; return; }
+
+    // Components: Statuspage is the source of truth; Upptime is the fallback if Statuspage is unreachable.
+    let comps = d.sp ? d.sp.components.filter(c => !c.only_show_if_degraded || c.status !== 'operational') : null;
+    const fallback = !d.sp;
+    if (fallback) comps = d.up.map(s => ({ id: s.slug, slug: s.slug, name: s.name, status: s.status === 'up' ? 'operational' : s.status === 'degraded' ? 'degraded_performance' : 'major_outage' }));
+    $('fallback').hidden = !fallback; $('fallback').textContent = fallback ? T[l].fallback : '';
+
+    // Banner
+    const banner = $('banner');
+    let ind = d.sp ? d.sp.status.indicator : null;
+    if (fallback) ind = comps.some(c => c.status === 'major_outage') ? 'major' : comps.some(c => c.status !== 'operational') ? 'minor' : 'none';
+    if (!comps || (!d.sp && !d.up.length)) { banner.className = 'banner unknown'; banner.textContent = T[l].failed; }
+    else { banner.className = 'banner ' + (ind === 'none' ? '' : ind); banner.textContent = T[l].indicator[ind] || T[l].allOk; }
+
+    // Active incidents and maintenance
+    const notices = [];
+    for (const inc of (d.sp ? d.sp.incidents : [])) {
+      const u = (inc.incident_updates || [])[0];
+      notices.push(`<div class="notice ${esc(inc.impact)}"><h3>${T[l].active}: <a href="${esc(inc.shortlink)}" target="_blank" rel="noopener">${esc(inc.name)}</a></h3>${u ? `<p><b>${esc(T[l].upd[u.status] || u.status)}</b> – ${linkify(u.body)}</p><small>${esc(fmtTime(new Date(u.display_at || u.created_at), l))}</small>` : ''}</div>`);
+    }
+    for (const mt of (d.sp ? d.sp.scheduled_maintenances : [])) {
+      notices.push(`<div class="notice maint"><h3>${T[l].maint}: <a href="${esc(mt.shortlink)}" target="_blank" rel="noopener">${esc(mt.name)}</a></h3><p>${esc(fmtTime(new Date(mt.scheduled_for), l))} – ${esc(fmtTime(new Date(mt.scheduled_until), l))} · <b>${esc(T[l].upd[mt.status] || mt.status)}</b></p></div>`);
+    }
+    $('notices').innerHTML = notices.join('');
+
+    // Component list, groups first-class like Statuspage
+    const rows = [];
+    const top = comps.filter(c => !c.group_id).sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    for (const c of top) {
+      if (c.group) {
+        const kids = comps.filter(k => k.group_id === c.id).sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+        rows.push(`<div class="group-title"><span>${esc(c.name)}</span><span class="st ${esc(c.status)}">${esc(T[l].comp[c.status] || c.status)}</span></div>`);
+        for (const k of kids) rows.push(compRow(k, d, l, true));
+      } else rows.push(compRow(c, d, l, false));
+    }
+    $('components').innerHTML = rows.join('');
+
+    // Past incidents: the last 15 days, one heading per day (Europe/Zurich)
+    const byDay = {};
+    for (const inc of d.incidents) { const k = dayKey(new Date(inc.created_at)); (byDay[k] = byDay[k] || []).push(inc); }
+    const past = [];
+    for (let i = 0; i < PAST_DAYS; i++) {
+      const day = new Date(d.at.getTime() - i * 86400000), k = dayKey(day);
+      const list = byDay[k] || [];
+      const body = list.length ? list.map(inc => `<div class="inc"><a class="inc-title ${esc(inc.impact)}" href="${esc(inc.shortlink)}" target="_blank" rel="noopener">${esc(inc.name)}</a>${(inc.incident_updates || []).map(u => `<div class="upd"><p><b>${esc(T[l].upd[u.status] || u.status)}</b> – ${linkify(u.body)}</p><small>${esc(fmtTime(new Date(u.display_at || u.created_at), l))}</small></div>`).join('')}</div>`).join('')
+        : `<p class="none">${i === 0 ? T[l].noIncToday : T[l].noInc}</p>`;
+      past.push(`<section class="day"><h4>${esc(fmtDay(day, l))}</h4>${body}</section>`);
+    }
+    $('past').innerHTML = past.join('');
+    $('updated').textContent = T[l].updated(new Intl.DateTimeFormat(T[l].locale, { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(d.at));
+  }
+
+  // Tooltip for the day bars (mouse and keyboard)
+  const tip = $('tip');
+  function showTip(el) {
+    tip.innerHTML = `<b>${esc(el.dataset.day)}</b>${esc(el.dataset.text)}`;
+    tip.style.display = 'block';
+    const r = el.getBoundingClientRect(), w = tip.offsetWidth;
+    tip.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+    tip.style.top = (r.bottom + 8) + 'px';
+  }
+  document.addEventListener('mouseover', e => { if (e.target.classList && e.target.classList.contains('bar')) showTip(e.target); });
+  document.addEventListener('focusin', e => { if (e.target.classList && e.target.classList.contains('bar')) showTip(e.target); });
+  document.addEventListener('mouseout', e => { if (e.target.classList && e.target.classList.contains('bar')) tip.style.display = 'none'; });
+  document.addEventListener('focusout', () => { tip.style.display = 'none'; });
+
+  // Subscribe menu (Statuspage's own email form needs its reCAPTCHA, so email opens their page)
+  const subBtn = $('subscribe'), subMenu = $('sub-menu');
+  const setMenu = open => { subMenu.hidden = !open; subBtn.setAttribute('aria-expanded', String(open)); };
+  subBtn.addEventListener('click', e => { e.stopPropagation(); setMenu(subMenu.hidden); });
+  document.addEventListener('click', e => { if (!subMenu.hidden && !subMenu.contains(e.target)) setMenu(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+
+  document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
+    lang = b.dataset.lang; try { localStorage.setItem('predivo-status-lang', lang) } catch {}
+    render();
+  }));
+
+  async function refresh() {
+    try { last = await load(); } catch { /* keep the previous view */ }
+    render();
+  }
+  render();
+  refresh();
+  setInterval(refresh, 60000);
+})();
+</script>
+</body>
+</html>
