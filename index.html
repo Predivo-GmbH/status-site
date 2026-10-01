@@ -92,7 +92,7 @@
   .group-title:first-child { border-top: 0; }
   .comp-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
   .comp-name { color: var(--ink); font-size: 14px; font-weight: 500; }
-  .comp-name .desc { display: inline-block; margin-left: 6px; width: 15px; height: 15px; line-height: 13px; text-align: center; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; color: var(--muted); cursor: help; }
+  .comp-name .desc { cursor: help; display: inline-block; margin-left: 6px; width: 15px; height: 15px; line-height: 13px; text-align: center; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; color: var(--muted); cursor: help; }
   .st { font-size: 12px; font-weight: 500; white-space: nowrap; }
   .st.operational { color: var(--ok-text); } .st.degraded_performance { color: var(--minor-text); }
   .st.partial_outage { color: var(--major-text); } .st.major_outage { color: var(--critical-text); }
@@ -196,6 +196,7 @@
       indicator: { none: 'Alle Systeme laufen normal', minor: 'Teilweise eingeschränkt', major: 'Teilweiser Ausfall', critical: 'Grösserer Ausfall', maintenance: 'Wartung läuft' },
       comp: { operational: 'In Betrieb', degraded_performance: 'Eingeschränkte Leistung', partial_outage: 'Teilweiser Ausfall', major_outage: 'Grösserer Ausfall', under_maintenance: 'Wartung' },
       upd: { investigating: 'Untersuchung', identified: 'Ursache gefunden', monitoring: 'Beobachtung', resolved: 'Behoben', update: 'Update', postmortem: 'Nachbetrachtung', scheduled: 'Geplant', in_progress: 'Läuft', verifying: 'Wird geprüft', completed: 'Abgeschlossen' },
+      about: { website: 'Unsere Website predivo.ch mit allen Informationen zu Predivo, unseren Produkten und Leistungen.', 'client-portal': 'portal.predivo.ch, wo Kundinnen und Kunden ihre Projekte mit uns verfolgen.' }, whatIs: 'Was ist das?',
       uptimeLabel: 'Verfügbarkeit der letzten 90 Tage.', history: 'Verlauf ansehen.', past: 'Frühere Vorfälle',
       daysAgo: 'vor 90 Tagen', today: 'Heute', uptime: '% Verfügbarkeit', noData: 'Keine Daten',
       noIncToday: 'Heute keine Vorfälle gemeldet.', noInc: 'Keine Vorfälle gemeldet.',
@@ -211,6 +212,7 @@
       indicator: { none: 'All Systems Operational', minor: 'Minor Service Outage', major: 'Partial System Outage', critical: 'Major System Outage', maintenance: 'Service Under Maintenance' },
       comp: { operational: 'Operational', degraded_performance: 'Degraded Performance', partial_outage: 'Partial Outage', major_outage: 'Major Outage', under_maintenance: 'Under Maintenance' },
       upd: { investigating: 'Investigating', identified: 'Identified', monitoring: 'Monitoring', resolved: 'Resolved', update: 'Update', postmortem: 'Postmortem', scheduled: 'Scheduled', in_progress: 'In progress', verifying: 'Verifying', completed: 'Completed' },
+      about: { website: 'Our website predivo.ch, with everything about Predivo, our products and services.', 'client-portal': 'portal.predivo.ch, where clients follow their projects with us.' }, whatIs: 'What is this?',
       uptimeLabel: 'Uptime over the past 90 days.', history: 'View historical uptime.', past: 'Past Incidents',
       daysAgo: '90 days ago', today: 'Today', uptime: '% uptime', noData: 'No data',
       noIncToday: 'No incidents reported today.', noInc: 'No incidents reported.',
@@ -282,7 +284,10 @@
   function compRow(c, d, l, child) {
     const slug = d.slugById[c.id] || c.slug;
     const b = barsFor(slug, d, l);
-    const desc = c.description ? `<span class="desc" title="${esc(c.description)}" aria-label="${esc(c.description)}">?</span>` : '';
+    // The "?" says what the service is, in the page's language. It used the browser's own title hint,
+    // which appears late, never on touch screens and only in one language - so it looked like it did nothing.
+    const about = (T[l].about && T[l].about[slug]) || c.description;
+    const desc = about ? `<span class="desc" tabindex="0" role="button" aria-label="${esc(T[l].whatIs)} ${esc(c.name)}: ${esc(about)}" data-day="${esc(c.name)}" data-text="${esc(about)}">?</span>` : '';
     const pct = b.pct === null ? T[l].noData : `${fmtNum(Math.round(b.pct * 100) / 100, l)} ${T[l].uptime}`;
     return `<div class="comp${child ? ' child' : ''}">
       <div class="comp-top"><span class="comp-name">${esc(c.name)}${desc}</span><span class="st ${esc(c.status)}">${esc(T[l].comp[c.status] || c.status)}</span></div>
@@ -360,9 +365,15 @@
     tip.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
     tip.style.top = (r.bottom + 8) + 'px';
   }
-  document.addEventListener('mouseover', e => { if (e.target.classList && e.target.classList.contains('bar')) showTip(e.target); });
-  document.addEventListener('focusin', e => { if (e.target.classList && e.target.classList.contains('bar')) showTip(e.target); });
-  document.addEventListener('mouseout', e => { if (e.target.classList && e.target.classList.contains('bar')) tip.style.display = 'none'; });
+  const tipFor = el => el && el.classList && (el.classList.contains('bar') || el.classList.contains('desc'));
+  document.addEventListener('mouseover', e => { if (tipFor(e.target)) showTip(e.target); });
+  document.addEventListener('focusin', e => { if (tipFor(e.target)) showTip(e.target); });
+  document.addEventListener('mouseout', e => { if (tipFor(e.target)) tip.style.display = 'none'; });
+  // a tap on the "?" (touch screens have no hover) toggles the same tooltip; a tap elsewhere closes it
+  document.addEventListener('click', e => {
+    if (e.target.classList && e.target.classList.contains('desc')) { if (tip.style.display === 'block') tip.style.display = 'none'; else showTip(e.target); }
+    else if (!tipFor(e.target)) tip.style.display = 'none';
+  });
   document.addEventListener('focusout', () => { tip.style.display = 'none'; });
 
   // Subscribe menu (Statuspage's own email form needs its reCAPTCHA, so email opens their page)
