@@ -26,8 +26,12 @@ address), so linking there made people click "Subscribe" twice. Since 2026-10-01
 3. The Worker accepts only Origin `https://status.predivo.ch`, checks the address and the Turnstile
    token, then calls `POST https://api.statuspage.io/v1/pages/9th11ttn03gg/subscribers` with
    `skip_confirmation_notification: false`.
-4. **Statuspage mails the confirmation link** (double opt-in) and handles unsubscribes. An address that
-   is already subscribed is answered as "already subscribed".
+4. **The subscription is active at once.** Measured 2026-10-01: a subscriber created through the API is not
+   double opt-in; Statuspage immediately mails "Subscription confirmation: Thanks for subscribing ... This
+   address will receive email notifications whenever incidents are reported or updated", with an
+   Unsubscribe link, and handles unsubscribes. Turnstile keeps bots out; someone typing another person's
+   address causes one notice with an unsubscribe link. An address already subscribed is answered as
+   "already subscribed".
 
 Secrets (never in this repo): the Worker holds `STATUSPAGE_API_KEY` and `TURNSTILE_SECRET` as Worker
 secrets; the originals are in `predivo/docs/Credentials.txt` (`STATUSPAGE_API_KEY`,
