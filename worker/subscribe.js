@@ -48,8 +48,9 @@ export default {
     })
     if (r.status === 201) return json({ ok: true }, 200, cors)
     const text = await r.text()
-    // An address that is already subscribed is not an error for the visitor.
-    if (r.status === 422 && /already|taken|exist/i.test(text)) return json({ ok: true, already: true }, 200, cors)
+    // An address that is already subscribed is not an error for the visitor. Statuspage answers 409
+    // "The email, phone information, or endpoint provided is already subscribed to updates." (measured 2026-10-01).
+    if (r.status === 409 || (r.status === 422 && /already|taken|exist/i.test(text))) return json({ ok: true, already: true }, 200, cors)
     console.log('statuspage error', r.status, text.slice(0, 200))
     return json({ ok: false, error: 'upstream' }, 502, cors)
   },
