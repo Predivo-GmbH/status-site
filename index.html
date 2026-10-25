@@ -24,8 +24,10 @@
   Hosted on GitHub Pages (repo Predivo-GmbH/status-site), NOT on our own web host, so it stays up when
   predivo.ch is down. Everything it shows is read live in the visitor's browser from two public sources:
     - Atlassian Statuspage public API (predivo.statuspage.io/api/v2): current status, components, incidents,
-      maintenance. Statuspage is where incidents are written and where people subscribe.
-    - Upptime check history (raw.githubusercontent.com, repo Predivo-GmbH/status-predivo): the 90-day bars.
+      maintenance, and the 90-day bars (counted from the incidents). Statuspage is where incidents are written
+      and where people subscribe.
+    - Upptime check history (raw.githubusercontent.com, repo Predivo-GmbH/status-predivo): the day each check
+      started (grey before it), and the bars only when Statuspage cannot be read.
   Brand tokens are taken from predivo.ch's own stylesheet (Inter, #111827 ink, #2A9D8F accent).
 -->
 <style>
@@ -258,14 +260,36 @@
     return {
       sp: summary.status === 'fulfilled' ? summary.value : null,
       incidents: incidents.status === 'fulfilled' ? incidents.value.incidents || [] : [],
+      incidentsRead: incidents.status === 'fulfilled',
       up, slugById, starts, at: new Date(),
     };
   }
 
-  function barsFor(slug, d, l) {
+  // Minutes down per day (Europe/Zurich) for one service, from the SAME Statuspage incidents the list below
+  // shows, so a bar can never report an outage the list says did not happen. The bars used to count Upptime's
+  // dailyMinutesDown: every failed check run, including the single runs the incident rule ignores on purpose
+  // (2 failed checks in a row, Roger 2026-10-01). On 25 Oct 2026 one GitHub check run could not reach our
+  // server while the office reached it in the same minute; the bar said "18 Min. Ausfall", the list "Heute
+  // keine Vorfälle gemeldet".
+  function incidentMinutes(compId, incidents) {
+    const out = {}, H = 3600000;
+    for (const inc of incidents) {
+      if (!(inc.components || []).some(c => c.id === compId)) continue;
+      const end = inc.resolved_at ? Date.parse(inc.resolved_at) : Date.now();
+      // Zurich midnight is always a whole UTC hour, so a piece inside one UTC hour lies inside one day
+      for (let t = Date.parse(inc.created_at); t < end;) {
+        const stop = Math.min(end, (Math.floor(t / H) + 1) * H);
+        const k = dayKey(new Date(t)); out[k] = (out[k] || 0) + (stop - t) / 60000; t = stop;
+      }
+    }
+    return out;
+  }
+
+  function barsFor(slug, compId, d, l) {
     const site = d.up.find(s => s.slug === slug);
     const start = d.starts[slug];
-    const down = (site && site.dailyMinutesDown) || {};
+    // incidents unreadable (Statuspage down): the Upptime minutes are the only record left
+    const down = d.incidentsRead ? incidentMinutes(compId, d.incidents) : (site && site.dailyMinutesDown) || {};
     const out = []; let monitored = 0, minutes = 0;
     for (let i = DAYS - 1; i >= 0; i--) {
       const day = new Date(d.at.getTime() - i * 86400000);
@@ -283,7 +307,7 @@
 
   function compRow(c, d, l, child) {
     const slug = d.slugById[c.id] || c.slug;
-    const b = barsFor(slug, d, l);
+    const b = barsFor(slug, c.id, d, l);
     // The "?" says what the service is, in the page's language. It used the browser's own title hint,
     // which appears late, never on touch screens and only in one language - so it looked like it did nothing.
     const about = (T[l].about && T[l].about[slug]) || c.description;
